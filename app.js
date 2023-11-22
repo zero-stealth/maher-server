@@ -38,7 +38,7 @@ app.use(session({
 app.use(morgan('dev'));
 
 app.use("/auth", authRoute);
-app.use("/jobs", adminRoute);
+app.use("/data", adminRoute);
 
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'app', 'index.html');

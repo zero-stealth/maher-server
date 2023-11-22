@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
-const findOrCreate = require('mongoose-findorcreate');
+const findOrCreate = require("mongoose-findorcreate");
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -10,16 +11,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  confirmPassword: {
-    type: String,
-    required: true,
-
-  },
   isAdmin: {
-    type:Boolean,
-    default: false
-  }
-},{timestamps: true});
+    type: Boolean,
+    default: false, 
+  },
+}, { timestamps: true });
 
 userSchema.plugin(findOrCreate);
 

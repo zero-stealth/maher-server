@@ -4,7 +4,6 @@ const asyncHandler = require('express-async-handler');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 
-// Helper functions
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: '1d',
@@ -16,50 +15,51 @@ const handleErrors = (res, status, message) => {
   throw new Error(message);
 };
 
-// User registration and login functions
-const register = asyncHandler(async (req, res, isAdmin = false) => {
-  const { email, password } = req.body;
+const register = asyncHandler(async (req, res) => {
+  const { email, password, isAdmin } = req.body;
 
   if (!email || !password) {
     handleErrors(res, 400, 'Please enter all the required fields');
+    return;
   }
 
-  const userExists = await User.findOne({ email });
+  try {
+    const userExists = await User.findOne({ email });
 
-  if (userExists) {
-    handleErrors(res, 400, 'User already exists!');
-  }
+    if (userExists) {
+      handleErrors(res, 400, 'User already exists!');
+      return;
+    }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-  const newUser = await User.create({
-    email,
-    password: hashedPassword,
-    isAdmin,
-  });
-
-  if (newUser) {
-    res.status(201).json({
-      _id: newUser.id,
-      email: newUser.email,
-      isAdmin: newUser.isAdmin || false,
-      token: generateToken(newUser._id),
+    const newUser = await User.create({
+      email,
+      password: hashedPassword,
+      isAdmin: isAdmin || false,
     });
-  } else {
-    handleErrors(res, 400, 'Invalid credentials');
+
+    if (newUser) {
+      res.status(201).json({
+        _id: newUser.id,
+        email: newUser.email,
+        isAdmin: newUser.isAdmin || false,
+        token: generateToken(newUser._id),
+      });
+    } else {
+      handleErrors(res, 400, 'Invalid credentials');
+    }
+  } catch (error) {
+    console.error(error);
+    handleErrors(res, 500, 'Server error');
   }
 });
+;
 
-const registerUser = asyncHandler(async (req, res) => {
-  await register(req, res);
-});
 
-const registerAdmin = asyncHandler(async (req, res) => {
-  await register(req, res, true);
-});
 
-const loginUser = asyncHandler(async (req, res) => {
+const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -80,7 +80,6 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// User update and reset functions
 const updateUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
@@ -113,6 +112,27 @@ const reset = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Reset code sent successfully' });
 });
 
+
+const setPassword = asyncHandler(async (req, res) => {
+  const { email, password, resetCode } = req.body;
+
+  const user = await User.findOne({ email, resetCode });
+
+  if (!user) {
+    handleErrors(res, 400, 'Invalid reset code or email');
+  }
+
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  user.password = hashedPassword;
+  user.resetCode = null; 
+  await user.save();
+
+  res.status(200).json({ message: 'Password reset successfully' });
+});
+
 const sendResetCodeByEmail = async (email, resetCode) => {
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -132,10 +152,11 @@ const sendResetCodeByEmail = async (email, resetCode) => {
   await transporter.sendMail(mailOptions);
 };
 
-const generateResetCode = () => {
-  const cryptoRandomString = require('crypto-random-string');
+const generateResetCode = async () => {
+  const cryptoRandomString = (await import('crypto-random-string')).default;
   return cryptoRandomString({ length: 8, type: 'alphanumeric' });
 };
+
 
 const getCredentials = asyncHandler(async (req, res) => {
   res.status(200).json(req.user);
@@ -163,9 +184,7 @@ const getUser = asyncHandler(async (req, res) => {
   }
 });
 
-  const redirectUser = asyncHandler(async (req, res) => {
-  res.status(200).json({ redirectTo: '/' });
-});
+
 
 const deleteUser = asyncHandler(async (req, res) => {
   try {
@@ -186,14 +205,13 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  registerUser,
-  registerAdmin,
-  loginUser,
+  register,
+  login,
   updateUser,
   reset,
   getCredentials,
   getUsers,
   getUser,
   deleteUser,
-  redirectUser,
+  setPassword,
 };

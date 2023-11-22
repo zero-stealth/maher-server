@@ -1,34 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const { protect } = require('../middleware/authMiddleware');
 const {
   createJob,
   getJob,
+  getJobs,
   updateJob,
-  getJobInCategory,
+  getJobCategory,
   deleteJob,
 } = require('../controllers/adminController');
-const { protect } = require('../middleware/authMiddleware');
 
-router.route('/job')
-  .get(getJob)
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  },
+});
+
+const upload = multer({ storage: storage });
+
+router.route('/jobs')
+  .get(getJobs)
   .post(
     protect,
-    upload.single('logo'), 
+    upload.single('logo'),
     createJob
   );
 
-router.route('/job/:id')
+router.route('/jobs/:id')
   .get(getJob)
   .put(
     protect,
-    upload.single('logo'), 
+    upload.single('logo'),
     updateJob
   )
   .delete(protect, deleteJob);
 
-router.route('/job/category/:value')
-  .get(getJobInCategory);
+router.route('/jobs/category/:value')
+  .get(getJobCategory);
 
 module.exports = router;

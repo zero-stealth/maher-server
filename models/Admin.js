@@ -6,10 +6,6 @@ const adminSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    name: {
-      type: String,
-      required: true,
-    },
     location: {
       type: String,
     },
@@ -27,7 +23,7 @@ const adminSchema = new mongoose.Schema(
       type: String,
     },
     company: {
-      type: Array,
+      type: String,
       required: true,
     },
   },
